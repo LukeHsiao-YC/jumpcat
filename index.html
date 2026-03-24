@@ -798,8 +798,13 @@
             }
         });
 
+        // 修正模擬換日的按鈕，加入清除寶箱紀錄的邏輯
         document.getElementById('cheat-day-btn').addEventListener('click', () => {
             storage.consecutiveDays++;
+            storage.lastDraw = '';       // 清除今日寶箱領取紀錄
+            storage.lastBonus3 = '';     // 清除3局寶箱領取紀錄
+            storage.lastBonus5 = '';     // 清除5局寶箱領取紀錄
+            todayCompleted = 0;          // 重置今日局數
             saveGame();
             updateUI();
             showSysMsg(`模擬換日！目前：${storage.consecutiveDays} 天`);
