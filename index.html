@@ -63,10 +63,10 @@
         .scenery {
             position: absolute;
             bottom: 30%;
-            width: 200%;
+            width: 100%;
             height: 100px;
             background-image: repeating-linear-gradient(90deg, transparent 0, transparent 100px, rgba(255,255,255,0.2) 100px, rgba(255,255,255,0.2) 120px);
-            transition: transform 0.2s ease-out;
+            transition: background-position 0.2s ease-out;
             z-index: 1;
         }
 
@@ -76,9 +76,15 @@
             left: 20%;
             font-size: 60px;
             z-index: 10;
-            transition: transform 0.1s ease-out;
             display: none;
             transform: scaleX(-1) translateY(0); 
+        }
+
+        /* 改用原生動畫確保跳躍穩定，不怕被覆蓋 */
+        @keyframes catJump {
+            0% { transform: scaleX(-1) translateY(0); }
+            50% { transform: scaleX(-1) translateY(-40px); }
+            100% { transform: scaleX(-1) translateY(0); }
         }
 
         .bg-prop {
@@ -123,7 +129,7 @@
         
         .cat-card {
             background: #fff; border-radius: 10px; padding: 5px;
-            text-align: center; width: 82px; border: 3px solid #ccc;
+            text-align: center; width: 85px; border: 3px solid #ccc;
             opacity: 0.5; transition: 0.3s; position: relative;
         }
         .cat-card.charged { opacity: 1; border-color: #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.5); }
@@ -133,7 +139,7 @@
 
         .cat-card .icon { font-size: 24px; }
         .cat-card .price { color: #ff4757; font-weight: bold; font-size: 11px; margin: 2px 0; }
-        .cat-card .hint { background: #555; color: white; border-radius: 4px; font-size: 9px; padding: 2px; margin-top: 1px; }
+        .cat-card .hint { background: #555; color: white; border-radius: 4px; font-size: 9px; padding: 3px 1px; margin-top: 2px; line-height: 1.2; }
         .cat-card .level-tag { color: #3742fa; font-size: 10px; font-weight: bold; }
 
         .overlay {
@@ -154,11 +160,12 @@
         .btn-success { background: #2ed573; }
         .btn-gold { background: #ffa502; }
 
-        #daily-chest-btn, #bonus-chest-3, #bonus-chest-5 {
+        #daily-chest-btn, #bonus-chest-3, #bonus-chest-5, #passport-btn {
             background: #ffd700; color: #d35400; font-size: 18px; padding: 12px 24px;
             border-radius: 12px; border: 2px solid #e67e22; font-weight: bold;
-            animation: pulse 1.5s infinite; margin: 10px 0; cursor: pointer;
+            margin: 5px; cursor: pointer;
         }
+        #daily-chest-btn { animation: pulse 1.5s infinite; }
 
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
@@ -168,6 +175,28 @@
             border-radius: 20px; font-size: 20px; font-weight: bold; z-index: 50;
             opacity: 0; transition: opacity 0.3s; pointer-events: none;
         }
+
+        .passport-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            max-width: 600px;
+            max-height: 50vh;
+            overflow-y: auto;
+            margin: 20px 0;
+            padding: 10px;
+            background: #f1f2f6;
+            border-radius: 15px;
+            border: 4px solid #dfe4ea;
+        }
+        .stamp {
+            background: #fff; border: 2px dashed #ccc; border-radius: 10px;
+            padding: 10px; display: flex; flex-direction: column; align-items: center;
+            filter: grayscale(100%); opacity: 0.5;
+        }
+        .stamp.unlocked { filter: grayscale(0%); opacity: 1; border-color: #ff4757; }
+        .stamp .icon { font-size: 30px; margin-bottom: 5px; }
+        .stamp .name { font-size: 12px; font-weight: bold; color: #333; }
     </style>
 </head>
 <body>
@@ -178,14 +207,25 @@
         <button id="close-reward-btn" class="btn-success">收下獎勵</button>
     </div>
 
+    <div id="passport-modal" class="overlay" style="display: none; z-index: 150;">
+        <h1 style="color: #3742fa; font-size: 36px; margin-bottom: 0;">環遊世界護照</h1>
+        <p style="margin-top: 5px; font-weight: bold; color: #555;">收集進度：<span id="unlocked-count">1</span> / 24</p>
+        <div class="passport-grid" id="passport-grid"></div>
+        <button id="close-passport-btn" class="btn-secondary">關閉護照</button>
+    </div>
+
     <div id="setup-screen" class="overlay">
-        <button id="cheat-day-btn" style="position: absolute; top: 15px; left: 15px; font-size: 12px; padding: 8px; background: #555;">模擬換日</button>
+        <div style="position: absolute; top: 15px; left: 15px; display: flex; gap: 5px;">
+            <button id="cheat-day-btn" style="font-size: 12px; padding: 8px; background: #555;">模擬換日</button>
+            <button id="cheat-world-btn" style="font-size: 12px; padding: 8px; background: #e1b12c;">飛往下個國家(測試)</button>
+        </div>
         
         <h1>貓咪跳繩大戰爭</h1>
         <div class="streak-badge" id="streak-display">連續跳繩：1 天</div>
         <div style="color: #e67e22; font-weight: bold; margin-bottom: 10px;">勇氣罐頭：<span id="cans-display">0</span> 🥫</div>
         
-        <div id="chests-area">
+        <div id="chests-area" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 10px;">
+            <button id="passport-btn" style="background: #3498db; color: #fff; border-color: #2980b9;">🗺️ 查看旅遊護照</button>
             <button id="daily-chest-btn" style="display: none;">🎁 領取今日寶箱</button>
             <button id="bonus-chest-3" style="display: none;">🥉 完成 3 局獎勵</button>
             <button id="bonus-chest-5" style="display: none;">🥇 完成 5 局獎勵</button>
@@ -251,30 +291,63 @@
         <div class="cat-card" id="card-1">
             <div class="icon">🐈</div><div class="level-tag" id="lv-1">Lv.1</div>
             <div class="price">10 🪙</div><div class="hint" id="stats-1"></div>
+            <div class="hint">鍵1<br>手把 A</div>
         </div>
         <div class="cat-card" id="card-2">
             <div class="icon">🛡️</div><div class="level-tag" id="lv-2">Lv.1</div>
             <div class="price">30 🪙</div><div class="hint" id="stats-2"></div>
+            <div class="hint">鍵2<br>手把 B</div>
         </div>
         <div class="cat-card" id="card-3">
             <div class="icon">😼</div><div class="level-tag" id="lv-3">Lv.1</div>
             <div class="price">50 🪙</div><div class="hint" id="stats-3"></div>
+            <div class="hint">鍵3<br>手把 X</div>
         </div>
         <div class="cat-card locked" id="card-4">
             <div class="icon">✨</div><div class="level-tag" id="lv-4">Lv.1</div>
             <div class="price">150 🪙</div><div class="hint" id="stats-4"></div>
+            <div class="hint">鍵4<br>手把 Y</div>
         </div>
         <div class="cat-card locked" id="card-5">
             <div class="icon">🤖</div><div class="level-tag" id="lv-5">Lv.1</div>
             <div class="price">300 🪙</div><div class="hint" id="stats-5"></div>
+            <div class="hint">鍵5<br>手把 R/ZR</div>
         </div>
         <div class="cat-card locked" id="card-6">
             <div class="icon">🦁</div><div class="level-tag">絕招</div>
             <div class="price">400 🪙</div><div class="hint">全場秒殺</div>
+            <div class="hint">鍵6<br>手把 L/ZL</div>
         </div>
     </div>
 
     <script>
+        const WORLDS = [
+            { name: '台灣', sky: '#87CEEB', ground: '#8B4513', border: '#2ed573', prop: ['🌴', '🌳', '☁️', '🧋'], monsters: ['👾', '🦇', '👹'] },
+            { name: '日本', sky: '#ffb8b8', ground: '#2f3542', border: '#ff9ff3', prop: ['🌸', '⛩️', '☁️', '🗻'], monsters: ['🥷', '👺', '👹'] },
+            { name: '韓國', sky: '#c7ecee', ground: '#95afc0', border: '#535c68', prop: ['🍚', '🏯', '☁️', '🌲'], monsters: ['👻', '🦊', '🐯'] },
+            { name: '泰國', sky: '#f8efba', ground: '#e1b12c', border: '#f39c12', prop: ['🐘', '🛕', '🌴', '☀️'], monsters: ['🐒', '🐍', '🐊'] },
+            { name: '法國', sky: '#a4b0be', ground: '#57606f', border: '#747d8c', prop: ['🥐', '🎨', '☁️', '☕'], monsters: ['🐀', '🦨', '🐺'] },
+            { name: '英國', sky: '#d1d8e0', ground: '#4b6584', border: '#778ca3', prop: ['🚌', '💂', '🌧️', '☁️'], monsters: ['🦇', '🕷️', '🧛'] },
+            { name: '義大利', sky: '#7bed9f', ground: '#ff7f50', border: '#eccc68', prop: ['🍕', '🛵', '🏛️', '☀️'], monsters: ['🐗', '🦅', '🐗'] },
+            { name: '希臘', sky: '#70a1ff', ground: '#dfe4ea', border: '#1e90ff', prop: ['🏺', '🌊', '☀️', '🏛️'], monsters: ['🦅', '🦂', '🐂'] },
+            { name: '埃及', sky: '#feca57', ground: '#e1b12c', border: '#d35400', prop: ['🐪', '🏜️', '☀️', '🌵'], monsters: ['🦂', '🐍', '🧻'] },
+            { name: '肯亞', sky: '#ff9f43', ground: '#ee5253', border: '#c8d6e5', prop: ['🦁', '🦒', '🌳', '☀️'], monsters: ['🐆', '🦏', '🦍'] },
+            { name: '杜拜', sky: '#f8a5c2', ground: '#c44569', border: '#f78fb3', prop: ['🏢', '🏎️', '🐪', '☀️'], monsters: ['🦅', '🦂', '🐅'] },
+            { name: '土耳其', sky: '#ffda79', ground: '#cc8e35', border: '#b33939', prop: ['🎈', '🕌', '☕', '☁️'], monsters: ['🐺', '🦅', '🐻'] },
+            { name: '美國', sky: '#70a1ff', ground: '#2f3640', border: '#1e90ff', prop: ['🍔', '🗽', '☁️', '🦅'], monsters: ['🧟', '👽', '🤡'] },
+            { name: '加拿大', sky: '#c8d6e5', ground: '#576574', border: '#8395a7', prop: ['🍁', '🦌', '🏔️', '❄️'], monsters: ['🐻', '🐺', '🫎'] },
+            { name: '墨西哥', sky: '#ffbe76', ground: '#eb4d4b', border: '#f0932b', prop: ['🌮', '🌵', '🎸', '☀️'], monsters: ['🦂', '🐍', '🦅'] },
+            { name: '巴西', sky: '#badc58', ground: '#6ab04c', border: '#f9ca24', prop: ['🦜', '⚽', '🌴', '☀️'], monsters: ['🐆', '🐊', '🦍'] },
+            { name: '澳洲', sky: '#ffeaa7', ground: '#f0932b', border: '#e1b12c', prop: ['🦘', '🐨', '🏄', '☀️'], monsters: ['🕷️', '🐍', '🐊'] },
+            { name: '紐西蘭', sky: '#b8e994', ground: '#78e08f', border: '#38ada9', prop: ['🥝', '🐑', '🏔️', '☁️'], monsters: ['🐗', '🦅', '🦈'] },
+            { name: '南極', sky: '#c7ecee', ground: '#ffffff', border: '#81ecec', prop: ['🐧', '🧊', '❄️', '⛄'], monsters: ['🦭', '🦈', '🐻‍❄️'] },
+            { name: '夏威夷', sky: '#81ecec', ground: '#f6e58d', border: '#00cec9', prop: ['🌺', '🏄', '🌋', '🍍'], monsters: ['🦀', '🦈', '🐙'] },
+            { name: '太空', sky: '#130f40', ground: '#30336b', border: '#535c68', prop: ['🌌', '🛰️', '🌠', '☄️'], monsters: ['👾', '🛸', '🛰️'] },
+            { name: '月球', sky: '#2d3436', ground: '#718093', border: '#b2bec3', prop: ['🌕', '👽', '🌑', '🛸'], monsters: ['👽', '🤖', '👾'] },
+            { name: '火星', sky: '#eb4d4b', ground: '#b33939', border: '#ff7979', prop: ['🔴', '🚀', '🌋', '🛰️'], monsters: ['🛸', '👽', '🌋'] },
+            { name: '貓咪星', sky: '#ff9ff3', ground: '#feca57', border: '#f368e0', prop: ['🐾', '🐟', '🧶', '🏰'], monsters: ['🐶', '🐭', '🦅'] }
+        ];
+
         let storage = {
             consecutiveDays: parseInt(localStorage.getItem('conDays') || '1'),
             lastDate: localStorage.getItem('lastDate') || '',
@@ -283,8 +356,12 @@
             catLevels: JSON.parse(localStorage.getItem('catLvs') || '{"1":1,"2":1,"3":1,"4":1,"5":1}'),
             lastDraw: localStorage.getItem('lastDraw') || '',
             lastBonus3: localStorage.getItem('lastBonus3') || '',
-            lastBonus5: localStorage.getItem('lastBonus5') || ''
+            lastBonus5: localStorage.getItem('lastBonus5') || '',
+            maxWorld: parseInt(localStorage.getItem('maxWorld') || '0') 
         };
+
+        // 調整為 35 局才換下一個國家 (5局/天 * 7天 = 一週)
+        const ROUNDS_PER_WORLD = 35; 
 
         function saveGame() {
             localStorage.setItem('conDays', storage.consecutiveDays);
@@ -295,6 +372,7 @@
             localStorage.setItem('lastDraw', storage.lastDraw);
             localStorage.setItem('lastBonus3', storage.lastBonus3);
             localStorage.setItem('lastBonus5', storage.lastBonus5);
+            localStorage.setItem('maxWorld', storage.maxWorld);
             document.getElementById('cans-display').innerText = storage.cans;
         }
 
@@ -314,14 +392,17 @@
         let gameLoopId, timerInterval;
         let sceneryPos = 0;
 
-        // 環遊世界主題設定
-        const WORLDS = [
-            { name: '台灣', sky: '#87CEEB', ground: '#8B4513', border: '#2ed573', prop: ['🌴', '🌳', '☁️', '🧋'] },
-            { name: '日本', sky: '#ffb8b8', ground: '#2f3542', border: '#ff9ff3', prop: ['🌸', '⛩️', '☁️', '🗻'] },
-            { name: '埃及', sky: '#feca57', ground: '#e1b12c', border: '#d35400', prop: ['🐪', '🏜️', '☀️', '🌵'] },
-            { name: '法國', sky: '#a4b0be', ground: '#57606f', border: '#747d8c', prop: ['🥐', '🎨', '☁️', '☕'] },
-            { name: '美國', sky: '#70a1ff', ground: '#2f3640', border: '#1e90ff', prop: ['🍔', '🗽', '☁️', '🦅'] }
-        ];
+        function getCurrentWorldIndex() {
+            return Math.floor((currentRound - 1) / ROUNDS_PER_WORLD) % WORLDS.length;
+        }
+
+        function checkWorldProgress() {
+            let absWorld = Math.floor((currentRound - 1) / ROUNDS_PER_WORLD);
+            if (absWorld > storage.maxWorld) {
+                storage.maxWorld = absWorld;
+                saveGame();
+            }
+        }
 
         const CAT_BASE = {
             1: { icon: '🐈', price: 10, hp: 50, atk: 15, speed: 2, range: 40, cd: 50 },
@@ -331,10 +412,10 @@
             5: { icon: '🤖', price: 300, hp: 600, atk: 200, speed: 1.5, range: 60, cd: 120 }
         };
 
-        const MONSTERS = [
-            { icon: '👾', baseHp: 80, atk: 10, speed: 1.5, range: 40, cd: 60 },
-            { icon: '🦇', baseHp: 40, atk: 15, speed: 3.5, range: 40, cd: 40 },
-            { icon: '👹', baseHp: 300, atk: 30, speed: 1, range: 50, cd: 90 }
+        const MONSTERS_BASE = [
+            { baseHp: 80, atk: 10, speed: 1.5, range: 40, cd: 60 },
+            { baseHp: 40, atk: 15, speed: 3.5, range: 40, cd: 40 },
+            { baseHp: 300, atk: 30, speed: 1, range: 50, cd: 90 }
         ];
 
         function updateUI() {
@@ -382,23 +463,71 @@
         document.getElementById('bonus-chest-5').onclick = () => openChest('bonus5');
         document.getElementById('close-reward-btn').onclick = () => document.getElementById('reward-modal').style.display = 'none';
 
+        document.getElementById('passport-btn').onclick = () => {
+            const grid = document.getElementById('passport-grid');
+            grid.innerHTML = '';
+            let unlockedCount = 0;
+            for (let i = 0; i < WORLDS.length; i++) {
+                let isUnlocked = i <= storage.maxWorld;
+                if (isUnlocked) unlockedCount++;
+                let w = WORLDS[i];
+                let stamp = document.createElement('div');
+                stamp.className = `stamp ${isUnlocked ? 'unlocked' : ''}`;
+                stamp.innerHTML = `<div class="icon">${isUnlocked ? w.prop[0] : '❓'}</div>
+                                   <div class="name">${isUnlocked ? w.name : '未解鎖'}</div>`;
+                grid.appendChild(stamp);
+            }
+            document.getElementById('unlocked-count').innerText = unlockedCount;
+            document.getElementById('passport-modal').style.display = 'flex';
+        };
+        document.getElementById('close-passport-btn').onclick = () => document.getElementById('passport-modal').style.display = 'none';
+
+        function updateBPM() {
+            if (currentPhase !== 'JUMP') return;
+            const now = Date.now();
+            jumpTimestamps = jumpTimestamps.filter(t => now - t < 10000);
+
+            let currentBPM = 0;
+            const paceEl = document.getElementById('pace-indicator');
+            if (!paceEl) return;
+
+            if (jumpTimestamps.length > 2) currentBPM = jumpTimestamps.length * 6; 
+
+            if (currentBPM === 0) {
+                paceEl.innerText = '準備起跳！保持 60~80 下/分的節奏';
+                paceEl.style.borderColor = '#fff'; paceEl.style.color = '#fff';
+            } else if (currentBPM >= 60 && currentBPM <= 85) {
+                paceEl.innerText = `完美節奏！(${currentBPM}下/分) 金幣加成中`;
+                paceEl.style.borderColor = '#2ed573'; paceEl.style.color = '#2ed573';
+            } else if (currentBPM > 85) {
+                paceEl.innerText = `太快了，放慢一點 (${currentBPM}下/分)`;
+                paceEl.style.borderColor = '#ff4757'; paceEl.style.color = '#ff4757';
+            } else {
+                paceEl.innerText = `稍微加快喔 (${currentBPM}下/分)`;
+                paceEl.style.borderColor = '#ffd700'; paceEl.style.color = '#ffd700';
+            }
+        }
+
         class Unit {
             constructor(isCat, id, typeData) {
                 this.isCat = isCat;
                 let lv = isCat ? storage.catLevels[id] || 1 : 1;
                 let mult = 1 + (lv - 1) * 0.2;
-                this.hp = Math.floor((typeData.hp || typeData.baseHp) * mult);
+                this.hp = Math.floor((typeData.hp || typeData.baseHp || 10) * mult);
                 if (!isCat) this.hp *= (1 + (currentRound-1)*0.5); 
                 this.maxHp = this.hp;
-                this.atk = Math.floor(typeData.atk * mult);
-                this.speed = typeData.speed;
-                this.range = typeData.range;
-                this.cdMax = typeData.cd;
+                this.atk = Math.floor((typeData.atk || 0) * mult);
+                this.speed = typeData.speed || 2;
+                this.range = typeData.range || 40;
+                this.cdMax = typeData.cd || 60;
                 this.cd = 0;
-                this.x = isCat ? 0 : window.innerWidth - 80;
+                
+                const bf = document.getElementById('battlefield');
+                // 鎖定座標在容器內，避免因為視窗縮放被擠到外面
+                this.x = isCat ? 0 : bf.clientWidth - 80;
                 this.id = Math.random().toString(36).substr(2,9);
-                this.el = this.createDOM(typeData.icon);
-                document.getElementById('battlefield').appendChild(this.el);
+                this.el = this.createDOM(typeData.icon || '❓');
+                bf.appendChild(this.el);
             }
             createDOM(icon) {
                 const el = document.createElement('div');
@@ -411,7 +540,7 @@
             takeDamage(dmg) {
                 this.hp -= dmg;
                 const hpBar = document.getElementById(`hp-${this.id}`);
-                if(hpBar) hpBar.style.width = Math.max(0, (this.hp/this.maxHp)*100) + '%';
+                if(hpBar && this.maxHp > 0) hpBar.style.width = Math.max(0, (this.hp/this.maxHp)*100) + '%';
                 if(this.hp <= 0) {
                     this.el.classList.add('dead');
                     setTimeout(() => this.el.remove(), 300);
@@ -440,17 +569,20 @@
             document.getElementById('result-screen').style.display = 'none';
             isPlaying = true;
             coins = 30; 
+            
+            checkWorldProgress();
+            
             startJumpPhase();
             gameLoop();
         }
 
         function applyWorldTheme() {
-            let world = WORLDS[(currentRound - 1) % WORLDS.length];
+            let world = WORLDS[getCurrentWorldIndex()];
             const bf = document.getElementById('battlefield');
             bf.style.backgroundColor = world.sky;
             bf.style.backgroundImage = `linear-gradient(to bottom, transparent 70%, ${world.ground} 70%)`;
             bf.style.borderBottomColor = world.border;
-            showSysMsg(`✈️ 抵達新國家：${world.name}！`);
+            showSysMsg(`抵達新國家：${world.name}！`);
         }
 
         function startJumpPhase() {
@@ -458,6 +590,7 @@
             timeRemaining = 180;
             roundJumps = 0;
             lionUsed = false;
+            jumpTimestamps = [];
             
             let m = Math.floor(timeRemaining / 60);
             let s = timeRemaining % 60;
@@ -468,6 +601,8 @@
             document.getElementById('shop-overlay').style.display = 'flex';
             document.getElementById('scout-cat').style.display = 'block';
             document.getElementById('pace-indicator').style.display = 'block';
+            updateBPM();
+            
             units.forEach(u => u.el.remove()); units = [];
             document.querySelectorAll('.bg-prop').forEach(el => el.remove());
         }
@@ -475,6 +610,7 @@
         function startBattlePhase() {
             currentPhase = 'BATTLE';
             timeRemaining = 60;
+            frameCount = 0; // 重置計數器確保怪獸可以立刻出現
             
             let m = Math.floor(timeRemaining / 60);
             let s = timeRemaining % 60;
@@ -483,6 +619,25 @@
             document.getElementById('shop-overlay').style.display = 'none';
             document.getElementById('scout-cat').style.display = 'none';
             document.getElementById('pace-indicator').style.display = 'none';
+            
+            // 保證戰鬥開始時，清除畫面上所有的跳躍背景裝飾物
+            document.querySelectorAll('.bg-prop').forEach(el => el.remove());
+        }
+
+        function spawnMonster() {
+            let roll = Math.random() * 100;
+            let mTypeIndex = 0;
+            let batWeight = timeRemaining < 40 ? 40 : 10;
+            let bossWeight = timeRemaining < 20 ? 30 : 0;
+
+            if (roll < bossWeight) mTypeIndex = 2;
+            else if (roll < batWeight + bossWeight) mTypeIndex = 1;
+            
+            const baseType = MONSTERS_BASE[mTypeIndex];
+            let currentWorld = WORLDS[getCurrentWorldIndex()];
+            let monsterIcon = currentWorld.monsters[mTypeIndex]; 
+            
+            units.push(new Unit(false, 0, { icon: monsterIcon, ...baseType }));
         }
 
         function gameLoop() {
@@ -493,10 +648,16 @@
                 cats.forEach(c => c.update(monsters));
                 monsters.forEach(m => m.update(cats));
                 units = units.filter(u => u.hp > 0 || u.el.parentNode);
-                if(Math.random() < 0.02) units.push(new Unit(false, 0, MONSTERS[Math.floor(Math.random()*3)]));
+                
+                // 減少怪獸密度：除以 0.8，讓間隔時間拉長
+                let spawnInterval = Math.floor(Math.max(25, 75 - (currentRound * 10)) / 0.8); 
+                if(frameCount % spawnInterval === 0) spawnMonster();
             }
+            frameCount++;
             gameLoopId = requestAnimationFrame(gameLoop);
         }
+
+        let frameCount = 0;
 
         setInterval(() => {
             if(!isPlaying) return;
@@ -507,14 +668,13 @@
             document.getElementById('time-bar').style.width = (timeRemaining/ (currentPhase === 'JUMP' ? 180 : 60)) * 100 + '%';
             
             if(currentPhase === 'JUMP') {
+                updateBPM();
                 document.getElementById('phase-text').innerText = `第 ${currentRound} 局：衝刺中 ${timeStr}`;
                 const bf = document.getElementById('battlefield');
-                if (timeRemaining <= 60) {
-                    bf.style.backgroundColor = '#2c3e50'; 
-                } else if (timeRemaining <= 120) {
-                    bf.style.backgroundColor = '#feca57'; 
-                } else {
-                    let world = WORLDS[(currentRound - 1) % WORLDS.length];
+                if (timeRemaining <= 60) bf.style.backgroundColor = '#2c3e50'; 
+                else if (timeRemaining <= 120) bf.style.backgroundColor = '#feca57'; 
+                else {
+                    let world = WORLDS[getCurrentWorldIndex()];
                     bf.style.backgroundColor = world.sky;
                 }
             } else {
@@ -543,53 +703,78 @@
         }
 
         function triggerJump() {
-            if(!isPlaying || currentPhase !== 'JUMP') return;
-            if(Date.now() - lastJumpTime < 400) return;
-            lastJumpTime = Date.now();
-            roundJumps++;
-            coins += (playMode === 'ROPE' ? 2 : 1);
-            document.getElementById('jump-display').innerText = roundJumps;
-            document.getElementById('coin-display').innerText = coins;
-            
-            let cat = document.getElementById('scout-cat');
-            if (cat) {
-                cat.style.transform = 'scaleX(-1) translateY(-30px)';
-                setTimeout(() => cat.style.transform = 'scaleX(-1) translateY(0)', 150);
-            }
-
-            sceneryPos -= 50;
-            document.getElementById('scenery').style.transform = `translateX(${sceneryPos % 200}px)`;
-            
-            document.querySelectorAll('.bg-prop').forEach(prop => {
-                let currentX = parseFloat(prop.dataset.x) || 0;
-                let speed = parseFloat(prop.dataset.speed) || 20;
-                currentX -= speed;
-                prop.dataset.x = currentX;
-                prop.style.transform = `translateX(${currentX}px)`;
-                if (currentX < -100) prop.remove();
-            });
-
-            if (Math.random() < 0.3) {
-                let world = WORLDS[(currentRound - 1) % WORLDS.length];
-                let prop = document.createElement('div');
-                prop.className = 'bg-prop';
-                prop.innerText = world.prop[Math.floor(Math.random() * world.prop.length)];
-                prop.dataset.x = window.innerWidth;
-                prop.style.transform = `translateX(${window.innerWidth}px)`;
+            try {
+                if(!isPlaying || currentPhase !== 'JUMP') return;
+                if(Date.now() - lastJumpTime < 400) return;
+                lastJumpTime = Date.now();
+                jumpTimestamps.push(lastJumpTime);
+                updateBPM();
                 
-                if (Math.random() < 0.4) {
-                    prop.style.top = (Math.random() * 30 + 5) + '%';
-                    prop.style.fontSize = (Math.random() * 30 + 40) + 'px';
-                    prop.dataset.speed = 25; 
-                    prop.style.opacity = '0.7';
-                    prop.style.zIndex = 2;
-                } else {
-                    prop.style.bottom = '30%';
-                    prop.style.fontSize = (Math.random() * 20 + 50) + 'px';
-                    prop.dataset.speed = 50; 
-                    prop.style.zIndex = 3;
+                roundJumps++;
+                let currentBPM = jumpTimestamps.length * 6;
+                let paceBonus = (currentBPM >= 60 && currentBPM <= 85) ? 2 : 1;
+                coins += (playMode === 'ROPE' ? 2 : 1) * paceBonus;
+                
+                document.getElementById('jump-display').innerText = roundJumps;
+                document.getElementById('coin-display').innerText = coins;
+                
+                let cat = document.getElementById('scout-cat');
+                if (cat) {
+                    cat.style.animation = 'none';
+                    void cat.offsetWidth; // 強制重繪重置動畫
+                    cat.style.animation = 'catJump 0.3s ease-out';
                 }
-                document.getElementById('battlefield').appendChild(prop);
+
+                let worldIdx = getCurrentWorldIndex();
+                let moveSpeed = 50;
+                if (worldIdx === 18) moveSpeed = 25; 
+                else if (worldIdx === 20 || worldIdx === 21) moveSpeed = 80;
+
+                sceneryPos = (sceneryPos + moveSpeed) % 100000;
+                document.getElementById('scenery').style.backgroundPosition = `-${sceneryPos}px 0`;
+                
+                const bf = document.getElementById('battlefield');
+
+                document.querySelectorAll('.bg-prop').forEach(prop => {
+                    let currentX = parseFloat(prop.dataset.x) || 0;
+                    let speed = parseFloat(prop.dataset.speed) || 20;
+                    currentX -= speed;
+                    prop.dataset.x = currentX;
+                    prop.style.transform = `translateX(${currentX}px)`;
+                    if (currentX < -100) prop.remove();
+                });
+
+                if (Math.random() < 0.3) {
+                    let world = WORLDS[worldIdx];
+                    let prop = document.createElement('div');
+                    prop.className = 'bg-prop';
+                    prop.innerText = world.prop[Math.floor(Math.random() * world.prop.length)];
+                    prop.dataset.x = bf.clientWidth;
+                    prop.style.transform = `translateX(${bf.clientWidth}px)`;
+                    
+                    if (Math.random() < 0.4) {
+                        prop.style.top = (Math.random() * 30 + 5) + '%';
+                        prop.style.fontSize = (Math.random() * 30 + 40) + 'px';
+                        prop.dataset.speed = 25; 
+                        prop.style.opacity = '0.7';
+                        prop.style.zIndex = 2;
+                    } else {
+                        prop.style.bottom = '30%';
+                        prop.style.fontSize = (Math.random() * 20 + 50) + 'px';
+                        prop.dataset.speed = 50; 
+                        prop.style.zIndex = 3;
+                    }
+                    bf.appendChild(prop);
+                }
+            } catch(e) { console.log("保護機制：略過異常", e); }
+        }
+
+        function showSysMsg(t) {
+            let m = document.getElementById('sys-msg');
+            if (m) {
+                m.innerText = t;
+                m.style.opacity = 1;
+                setTimeout(() => m.style.opacity = 0, 2000);
             }
         }
 
@@ -613,19 +798,149 @@
             }
         });
 
+        document.getElementById('cheat-day-btn').addEventListener('click', () => {
+            storage.consecutiveDays++;
+            saveGame();
+            updateUI();
+            showSysMsg(`模擬換日！目前：${storage.consecutiveDays} 天`);
+        });
+
+        document.getElementById('cheat-world-btn').addEventListener('click', () => {
+            currentRound += ROUNDS_PER_WORLD;
+            checkWorldProgress(); 
+            showSysMsg(`推進至局數 ${currentRound}，解鎖新進度`);
+        });
+
         document.getElementById('mode-rope-btn').onclick = () => { playMode = 'ROPE'; document.getElementById('connect-section').style.display = 'flex'; };
         document.getElementById('mode-norope-btn').onclick = () => { playMode = 'NOROPE'; document.getElementById('connect-section').style.display = 'flex'; };
         document.getElementById('kb-start-btn').onclick = startGame;
         document.getElementById('next-round-btn').onclick = () => { currentRound++; startGame(); };
         document.getElementById('end-training-btn').onclick = () => location.reload();
         
-        updateUI();
-
-        function showSysMsg(t) {
-            let m = document.getElementById('sys-msg');
-            m.innerText = t; m.style.opacity = 1;
-            setTimeout(() => m.style.opacity = 0, 2000);
+        let wakeLock = null;
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) { }
         }
+        document.addEventListener('click', requestWakeLock, { once: true });
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') requestWakeLock();
+        });
+
+        document.getElementById('metronome-toggle-btn').addEventListener('click', (e) => {
+            isMetronomeOn = !isMetronomeOn;
+            if (isMetronomeOn) {
+                e.target.innerText = '輔助節拍器：開啟 (70 BPM)';
+                e.target.style.background = '#2ed573';
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            } else {
+                e.target.innerText = '輔助節拍器：關閉';
+                e.target.style.background = '#34495e';
+            }
+        });
+
+        function playBeatSound() {
+            try {
+                if (!audioCtx) return;
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime); 
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); 
+                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.1);
+            } catch (e) { }
+        }
+
+        const connectBtn = document.getElementById('connect-btn');
+        const statusText = document.getElementById('connection-status');
+        const JUMP_THRESHOLD = 12000; 
+
+        async function sendJoyconCommand(device, subcommand, args) {
+            const payload = new Uint8Array(40);
+            payload[0] = Math.floor(Math.random() * 256); 
+            payload[1] = 0x00; payload[2] = 0x01; payload[3] = 0x40; payload[4] = 0x40;
+            payload[5] = 0x00; payload[6] = 0x01; payload[7] = 0x40; payload[8] = 0x40;
+            payload[9] = subcommand;
+            for (let i = 0; i < args.length; i++) payload[10 + i] = args[i];
+            await device.sendReport(0x01, payload);
+        }
+
+        connectBtn.addEventListener('click', async () => {
+            try {
+                const devices = await navigator.hid.requestDevice({ filters: [] });
+                if (devices.length === 0) return;
+                const joycon = devices[0];
+                await joycon.open();
+                connectedDevicesCount++;
+                
+                statusText.innerText = `設定第 ${connectedDevicesCount} 支感測器中...`;
+                statusText.style.color = '#333';
+                
+                await sendJoyconCommand(joycon, 0x40, [0x01]);
+                await new Promise(resolve => setTimeout(resolve, 50));
+                await sendJoyconCommand(joycon, 0x03, [0x30]);
+
+                if (playMode === 'ROPE' && connectedDevicesCount === 1) {
+                    statusText.innerText = "已連線第一支。請再次點擊連線第二支手把。";
+                    connectBtn.innerText = "連線第二支 Joy-Con";
+                } 
+                
+                if (connectedDevicesCount >= requiredJoycons) {
+                    document.getElementById('start-btn').style.display = 'inline-block';
+                    document.getElementById('connect-btn').style.display = 'none';
+                    document.getElementById('connection-status').innerText = "太棒了！手把準備就緒。";
+                    document.getElementById('connection-status').style.color = '#2ed573';
+                }
+
+                joycon.addEventListener('inputreport', (event) => {
+                    if (event.reportId === 0x30) {
+                        const data = event.data;
+                        if (data.byteLength >= 18) {
+                            const x = data.getInt16(12, true);
+                            const y = data.getInt16(14, true);
+                            const z = data.getInt16(16, true);
+                            const magnitude = Math.sqrt(x*x + y*y + z*z);
+                            if (magnitude > JUMP_THRESHOLD) triggerJump();
+
+                            const rightButtons = data.getUint8(2);
+                            const leftButtons = data.getUint8(4);
+                            
+                            let buyId = 0;
+                            if ((rightButtons & 0x08) !== 0 || (leftButtons & 0x04) !== 0) buyId = 1; 
+                            else if ((rightButtons & 0x04) !== 0 || (leftButtons & 0x01) !== 0) buyId = 2; 
+                            else if ((rightButtons & 0x02) !== 0 || (leftButtons & 0x02) !== 0) buyId = 3; 
+                            else if ((rightButtons & 0x01) !== 0 || (leftButtons & 0x08) !== 0) buyId = 4; 
+                            else if ((rightButtons & 0x40) !== 0 || (rightButtons & 0x80) !== 0) buyId = 5; 
+                            else if ((leftButtons & 0x40) !== 0 || (leftButtons & 0x80) !== 0) buyId = 6; 
+
+                            if (buyId > 0 && coins >= CAT_BASE[buyId].price) {
+                                if (buyId === 6 && (!lionUsed && todayCompleted >= 5)) {
+                                    lionUsed = true; coins -= 400;
+                                    units.filter(u => !u.isCat).forEach(m => m.takeDamage(9999));
+                                    showSysMsg("獅子王絕招！");
+                                } else if (buyId !== 6) {
+                                    coins -= CAT_BASE[buyId].price;
+                                    units.push(new Unit(true, buyId, CAT_BASE[buyId]));
+                                    document.getElementById('coin-display').innerText = coins;
+                                }
+                            }
+                        }
+                    }
+                });
+
+            } catch (error) {
+                statusText.innerText = "連線失敗，請檢查系統藍牙設定。";
+            }
+        });
+
+        updateUI();
     </script>
 </body>
 </html>
