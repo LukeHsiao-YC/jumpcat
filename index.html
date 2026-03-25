@@ -130,10 +130,11 @@
             background: #fff; border-radius: 10px; padding: 5px;
             text-align: center; width: 85px; border: 3px solid #ccc;
             opacity: 0.5; transition: 0.3s; position: relative;
+            cursor: pointer;
         }
         .cat-card.charged { opacity: 1; border-color: #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.5); }
-        .cat-card.affordable { opacity: 1; border-color: #2ed573; cursor: pointer; }
-        .cat-card.locked { filter: grayscale(100%); opacity: 0.3; }
+        .cat-card.affordable { opacity: 1; border-color: #2ed573; }
+        .cat-card.locked { filter: grayscale(100%); opacity: 0.3; pointer-events: none; }
         .cat-card.used { filter: grayscale(100%); opacity: 0.3; pointer-events: none; }
 
         .cat-card .icon { font-size: 24px; }
@@ -197,6 +198,17 @@
         .stamp.locked { filter: grayscale(100%); opacity: 0.4; }
         .stamp .icon { font-size: 30px; margin-bottom: 5px; }
         .stamp .name { font-size: 12px; font-weight: bold; color: #333; }
+        
+        .today-record-panel {
+            background: rgba(255, 255, 255, 0.85);
+            padding: 8px 20px;
+            border-radius: 15px;
+            border: 2px solid #3742fa;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -207,7 +219,17 @@
         <button id="close-reward-btn" class="btn-success">收下獎勵</button>
     </div>
 
-    <!-- 貓咪基地(升級)畫面 -->
+    <!-- 結束訓練專屬結算視窗 -->
+    <div id="end-summary-modal" class="overlay" style="display: none; z-index: 300;">
+        <h1 style="color: #ff4757; font-size: 40px; margin-bottom: 5px;">今日訓練完成！</h1>
+        <p id="end-phrase" style="font-size: 18px; color: #555; font-weight: bold; margin: 10px 0;"></p>
+        <div style="background: #f1f2f6; padding: 20px; border-radius: 15px; border: 3px solid #dfe4ea; margin: 20px 0; width: 80%; max-width: 400px;">
+            <p style="font-size: 20px; margin: 10px 0; color: #333;">今日完成局數：<span id="end-rounds" style="color:#3742fa; font-weight:bold; font-size: 26px;">0</span> 局</p>
+            <p style="font-size: 20px; margin: 10px 0; color: #333;">今日總跳躍數：<span id="end-jumps" style="color:#2ed573; font-weight:bold; font-size: 26px;">0</span> 下</p>
+        </div>
+        <button id="final-close-btn" class="btn-success">好好休息，明天見！</button>
+    </div>
+
     <div id="upgrade-modal" class="overlay" style="display: none; z-index: 160;">
         <h1 style="color: #e67e22; font-size: 36px; margin-bottom: 0;">貓咪升級基地</h1>
         <p style="margin-top: 5px; font-weight: bold; color: #555;">目前擁有罐頭：<span id="upgrade-cans-display">0</span> 🥫</p>
@@ -229,7 +251,12 @@
         </div>
         
         <h1>貓咪跳繩大戰爭</h1>
-        <div class="streak-badge" id="streak-display">連續跳繩：1 天</div>
+        <div class="streak-badge" id="streak-display">累積運動：1 天 | 連續跳繩：1 天</div>
+        
+        <div class="today-record-panel">
+            今日紀錄：完成 <span id="today-rounds-display" style="color: #ff4757;">0</span> 局 / 共 <span id="today-jumps-display" style="color: #2ed573;">0</span> 下
+        </div>
+
         <div style="color: #e67e22; font-weight: bold; margin-bottom: 10px;">勇氣罐頭：<span id="cans-display">0</span> 🥫</div>
         
         <div id="chests-area" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 10px;">
@@ -298,32 +325,32 @@
 
     <div class="shop" id="shop">
         <div id="shop-overlay">跳躍中...</div>
-        <div class="cat-card" id="card-1">
+        <div class="cat-card" id="card-1" onclick="buyCat(1)">
             <div class="icon">🐈</div><div class="level-tag" id="lv-1">Lv.1</div>
             <div class="price">10 🪙</div><div class="hint" id="stats-1"></div>
             <div class="hint">鍵1<br>手把 A</div>
         </div>
-        <div class="cat-card" id="card-2">
+        <div class="cat-card" id="card-2" onclick="buyCat(2)">
             <div class="icon">🛡️</div><div class="level-tag" id="lv-2">Lv.1</div>
             <div class="price">30 🪙</div><div class="hint" id="stats-2"></div>
             <div class="hint">鍵2<br>手把 B</div>
         </div>
-        <div class="cat-card" id="card-3">
+        <div class="cat-card" id="card-3" onclick="buyCat(3)">
             <div class="icon">😼</div><div class="level-tag" id="lv-3">Lv.1</div>
             <div class="price">50 🪙</div><div class="hint" id="stats-3"></div>
             <div class="hint">鍵3<br>手把 X</div>
         </div>
-        <div class="cat-card locked" id="card-4">
+        <div class="cat-card locked" id="card-4" onclick="buyCat(4)">
             <div class="icon">✨</div><div class="level-tag" id="lv-4">Lv.1</div>
             <div class="price">150 🪙</div><div class="hint" id="stats-4"></div>
             <div class="hint">鍵4<br>手把 Y</div>
         </div>
-        <div class="cat-card locked" id="card-5">
+        <div class="cat-card locked" id="card-5" onclick="buyCat(5)">
             <div class="icon">🤖</div><div class="level-tag" id="lv-5">Lv.1</div>
             <div class="price">300 🪙</div><div class="hint" id="stats-5"></div>
             <div class="hint">鍵5<br>手把 R/ZR</div>
         </div>
-        <div class="cat-card locked" id="card-6">
+        <div class="cat-card locked" id="card-6" onclick="buyCat(6)">
             <div class="icon">🦁</div><div class="level-tag">絕招</div>
             <div class="price">400 🪙</div><div class="hint">全場秒殺</div>
             <div class="hint">鍵6<br>手把 L/ZL</div>
@@ -360,21 +387,28 @@
 
         let storage = {
             consecutiveDays: parseInt(localStorage.getItem('conDays') || '1'),
-            lastDate: localStorage.getItem('lastDate') || '',
+            totalDays: parseInt(localStorage.getItem('totalDays') || '1'),
+            todayDate: localStorage.getItem('todayDate') || new Date().toLocaleDateString(),
+            todayRounds: parseInt(localStorage.getItem('todayRounds') || '0'),
+            todayJumps: parseInt(localStorage.getItem('todayJumps') || '0'),
             lifetimeJumps: parseInt(localStorage.getItem('lifeJumps') || '0'),
             cans: parseInt(localStorage.getItem('cans') || '0'),
             catLevels: JSON.parse(localStorage.getItem('catLvs') || '{"1":1,"2":1,"3":1,"4":1,"5":1}'),
             lastDraw: localStorage.getItem('lastDraw') || '',
             lastBonus3: localStorage.getItem('lastBonus3') || '',
             lastBonus5: localStorage.getItem('lastBonus5') || '',
-            maxWorld: parseInt(localStorage.getItem('maxWorld') || '0') 
+            maxWorld: parseInt(localStorage.getItem('maxWorld') || '0'),
+            worldStats: JSON.parse(localStorage.getItem('worldStats') || '{}')
         };
 
         const ROUNDS_PER_WORLD = 35; 
 
         function saveGame() {
             localStorage.setItem('conDays', storage.consecutiveDays);
-            localStorage.setItem('lastDate', storage.lastDate);
+            localStorage.setItem('totalDays', storage.totalDays);
+            localStorage.setItem('todayDate', storage.todayDate);
+            localStorage.setItem('todayRounds', storage.todayRounds);
+            localStorage.setItem('todayJumps', storage.todayJumps);
             localStorage.setItem('lifeJumps', storage.lifetimeJumps);
             localStorage.setItem('cans', storage.cans);
             localStorage.setItem('catLvs', JSON.stringify(storage.catLevels));
@@ -382,11 +416,32 @@
             localStorage.setItem('lastBonus3', storage.lastBonus3);
             localStorage.setItem('lastBonus5', storage.lastBonus5);
             localStorage.setItem('maxWorld', storage.maxWorld);
+            localStorage.setItem('worldStats', JSON.stringify(storage.worldStats));
             document.getElementById('cans-display').innerText = storage.cans;
         }
 
+        function checkNewDay() {
+            const today = new Date().toLocaleDateString();
+            if (storage.todayDate !== today) {
+                let lastD = new Date(storage.todayDate);
+                let todayD = new Date(today);
+                let diffDays = Math.round((todayD - lastD) / (1000 * 60 * 60 * 24));
+                
+                if (diffDays === 1) {
+                    storage.consecutiveDays++;
+                } else if (diffDays > 1) {
+                    storage.consecutiveDays = 1;
+                }
+                
+                storage.totalDays++;
+                storage.todayDate = today;
+                storage.todayRounds = 0;
+                storage.todayJumps = 0;
+                saveGame();
+            }
+        }
+
         let currentRound = 1;
-        let todayCompleted = 0;
         let coins = 0;
         let kills = 0;
         let roundJumps = 0;
@@ -406,11 +461,11 @@
         let sceneryPos = 0;
 
         function getCurrentWorldIndex() {
-            return Math.floor((currentRound - 1) / ROUNDS_PER_WORLD) % WORLDS.length;
+            return Math.floor((storage.totalDays - 1) / 7) % WORLDS.length;
         }
 
         function checkWorldProgress() {
-            let absWorld = Math.floor((currentRound - 1) / ROUNDS_PER_WORLD);
+            let absWorld = Math.floor((storage.totalDays - 1) / 7);
             if (absWorld > storage.maxWorld) {
                 storage.maxWorld = absWorld;
                 saveGame();
@@ -432,8 +487,12 @@
         ];
 
         function updateUI() {
-            document.getElementById('streak-display').innerText = `連續跳繩：${storage.consecutiveDays} 天`;
+            checkNewDay();
+            
+            document.getElementById('streak-display').innerText = `累積運動：${storage.totalDays} 天 | 連續跳繩：${storage.consecutiveDays} 天`;
             document.getElementById('cans-display').innerText = storage.cans;
+            document.getElementById('today-rounds-display').innerText = storage.todayRounds;
+            document.getElementById('today-jumps-display').innerText = storage.todayJumps;
             
             for(let id in storage.catLevels) {
                 let lv = storage.catLevels[id];
@@ -445,8 +504,8 @@
 
             const today = new Date().toLocaleDateString();
             document.getElementById('daily-chest-btn').style.display = (storage.lastDraw !== today) ? 'block' : 'none';
-            document.getElementById('bonus-chest-3').style.display = (todayCompleted >= 3 && storage.lastBonus3 !== today) ? 'block' : 'none';
-            document.getElementById('bonus-chest-5').style.display = (todayCompleted >= 5 && storage.lastBonus5 !== today) ? 'block' : 'none';
+            document.getElementById('bonus-chest-3').style.display = (storage.todayRounds >= 3 && storage.lastBonus3 !== today) ? 'block' : 'none';
+            document.getElementById('bonus-chest-5').style.display = (storage.todayRounds >= 5 && storage.lastBonus5 !== today) ? 'block' : 'none';
             
             checkUnlocks();
         }
@@ -454,15 +513,19 @@
         function checkUnlocks() {
             if (storage.lifetimeJumps >= 500) document.getElementById('card-4').classList.remove('locked');
             if (currentRound >= 3) document.getElementById('card-5').classList.remove('locked');
-            if (todayCompleted >= 5) document.getElementById('card-6').classList.remove('locked');
+            if (storage.todayRounds >= 5) document.getElementById('card-6').classList.remove('locked');
         }
 
         function openChest(type) {
             let gold = 0, cans = 0;
             const today = new Date().toLocaleDateString();
+            
             if (type === 'daily') { 
-                gold = Math.floor(Math.random() * 151) + 50; // 50~200 隨機
-                cans = Math.floor(Math.random() * 6) + 5;   // 5~10 隨機
+                let streakBonusGold = Math.min(storage.consecutiveDays * 10, 300);
+                let streakBonusCans = Math.floor(Math.min(storage.consecutiveDays, 30) / 2);
+                
+                gold = Math.floor(Math.random() * 151) + 50 + streakBonusGold; 
+                cans = Math.floor(Math.random() * 6) + 5 + streakBonusCans;   
                 storage.lastDraw = today; 
             }
             else if (type === 'bonus3') { gold = 300; cans = 50; storage.lastBonus3 = today; }
@@ -480,7 +543,6 @@
         document.getElementById('bonus-chest-5').onclick = () => openChest('bonus5');
         document.getElementById('close-reward-btn').onclick = () => document.getElementById('reward-modal').style.display = 'none';
 
-        // 護照顯示
         document.getElementById('passport-btn').onclick = () => {
             const grid = document.getElementById('passport-grid');
             grid.innerHTML = '';
@@ -489,10 +551,15 @@
                 let isUnlocked = i <= storage.maxWorld;
                 if (isUnlocked) unlockedCount++;
                 let w = WORLDS[i];
+                let stats = storage.worldStats[i] || { rounds: 0, jumps: 0 };
                 let stamp = document.createElement('div');
                 stamp.className = `stamp ${isUnlocked ? 'unlocked' : ''}`;
+                
+                let statsHtml = isUnlocked ? `<div style="font-size: 11px; margin-top: 4px; color: #555; text-align: center; line-height: 1.3;">${stats.rounds}局<br>${stats.jumps}下</div>` : '';
+                
                 stamp.innerHTML = `<div class="icon">${isUnlocked ? w.prop[0] : '❓'}</div>
-                                   <div class="name">${isUnlocked ? w.name : '未解鎖'}</div>`;
+                                   <div class="name">${isUnlocked ? w.name : '未解鎖'}</div>
+                                   ${statsHtml}`;
                 grid.appendChild(stamp);
             }
             document.getElementById('unlocked-count').innerText = unlockedCount;
@@ -500,7 +567,6 @@
         };
         document.getElementById('close-passport-btn').onclick = () => document.getElementById('passport-modal').style.display = 'none';
 
-        // 貓咪基地(升級)顯示
         function renderUpgradeBase() {
             const grid = document.getElementById('upgrade-grid');
             grid.innerHTML = '';
@@ -560,7 +626,6 @@
         };
         document.getElementById('close-upgrade-btn').onclick = () => document.getElementById('upgrade-modal').style.display = 'none';
 
-        // 優化的配速計算，計算最後幾次跳躍的平均間隔，更真實靈敏
         function updateBPM() {
             if (currentPhase !== 'JUMP') return;
             const paceEl = document.getElementById('pace-indicator');
@@ -568,7 +633,6 @@
 
             const now = Date.now();
             
-            // 如果超過 2.5 秒沒有跳躍，視為停頓，歸零計算
             if (now - lastJumpTime > 2500) {
                 jumpTimestamps = [];
                 currentBPM = 0;
@@ -655,17 +719,16 @@
             }
         }
 
-        // 統一控管買貓動作，加入防連點機制
         let lastBuyTime = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
         function buyCat(id) {
             if(!isPlaying || currentPhase !== 'BATTLE') return;
             
             const now = Date.now();
-            if (now - lastBuyTime[id] < 300) return; // 0.3秒內不允許重複買同一種貓，防Joycon抽筋
+            if (now - lastBuyTime[id] < 300) return; 
             lastBuyTime[id] = now;
 
             if(id === 6) {
-                if(todayCompleted >= 5 && coins >= 400 && !lionUsed) {
+                if(storage.todayRounds >= 5 && coins >= 400 && !lionUsed) {
                     lionUsed = true; 
                     coins -= 400;
                     units.filter(u => !u.isCat).forEach(m => m.takeDamage(9999));
@@ -675,8 +738,8 @@
             } else {
                 let base = CAT_BASE[id];
                 if(coins >= base.price) {
-                    if (id === 4 && storage.lifetimeJumps < 500) return;
-                    if (id === 5 && currentRound < 3) return;
+                    if (id === 4 && storage.lifetimeJumps < 500) { showSysMsg("魔法貓尚未解鎖！"); return; }
+                    if (id === 5 && currentRound < 3) { showSysMsg("機器貓尚未解鎖！"); return; }
                     
                     coins -= base.price;
                     units.push(new Unit(true, id, base));
@@ -693,6 +756,7 @@
             kills = 0;
             document.getElementById('kill-display').innerText = 0;
             
+            checkNewDay();
             checkWorldProgress();
             
             startJumpPhase();
@@ -819,10 +883,20 @@
 
         function endRound() {
             isPlaying = false;
-            todayCompleted++;
+            
+            storage.todayRounds++;
+            storage.todayJumps += roundJumps;
             storage.lifetimeJumps += roundJumps;
             let earnedCans = Math.floor(roundJumps / 10);
             storage.cans += earnedCans;
+
+            let wIdx = getCurrentWorldIndex();
+            if (!storage.worldStats[wIdx]) {
+                storage.worldStats[wIdx] = { rounds: 0, jumps: 0 };
+            }
+            storage.worldStats[wIdx].rounds += 1;
+            storage.worldStats[wIdx].jumps += roundJumps;
+
             saveGame();
             
             if (metronomeInterval) clearInterval(metronomeInterval);
@@ -842,12 +916,11 @@
                 lastJumpTime = now;
                 
                 jumpTimestamps.push(now);
-                if (jumpTimestamps.length > 5) jumpTimestamps.shift(); // 只保留最近5次來算配速
+                if (jumpTimestamps.length > 5) jumpTimestamps.shift(); 
                 
                 updateBPM();
                 
                 roundJumps++;
-                // 節奏金幣加成
                 let inZone = (currentBPM >= 60 && currentBPM <= 85);
                 let baseCoin = inZone ? 4 : 2;
                 coins += (playMode === 'ROPE' ? baseCoin * 2 : baseCoin);
@@ -929,19 +1002,22 @@
 
         document.getElementById('cheat-day-btn').addEventListener('click', () => {
             storage.consecutiveDays++;
+            storage.totalDays++;
             storage.lastDraw = '';       
             storage.lastBonus3 = '';     
             storage.lastBonus5 = '';     
-            todayCompleted = 0;          
+            storage.todayRounds = 0;
+            storage.todayJumps = 0;
             saveGame();
             updateUI();
-            showSysMsg(`模擬換日！目前：${storage.consecutiveDays} 天`);
+            showSysMsg(`模擬換日！累積 ${storage.totalDays} 天 / 連續 ${storage.consecutiveDays} 天`);
         });
 
         document.getElementById('cheat-world-btn').addEventListener('click', () => {
-            currentRound += ROUNDS_PER_WORLD;
+            storage.totalDays += 7;
             checkWorldProgress(); 
-            showSysMsg(`推進至局數 ${currentRound}，解鎖新進度`);
+            updateUI();
+            showSysMsg(`模擬滿七天！飛往下個國家`);
         });
 
         document.getElementById('mode-rope-btn').onclick = () => { 
@@ -967,7 +1043,26 @@
         document.getElementById('kb-start-btn').onclick = startGame;
         document.getElementById('start-btn').onclick = startGame;
         document.getElementById('next-round-btn').onclick = () => { currentRound++; startGame(); };
-        document.getElementById('end-training-btn').onclick = () => location.reload();
+        
+        // 結束訓練按鈕，呼叫專屬結算畫面
+        const emotionalPhrases = [
+            "太棒了！你今天的努力，身體都記住了喔！",
+            "每一次跳躍，都是讓自己變得更強大的魔法！",
+            "流下的汗水都是閃閃發光的勳章，今天也辛苦囉！",
+            "好厲害！堅持下去的你，比昨天更棒了呢！"
+        ];
+        
+        function showEndSummary() {
+            document.getElementById('result-screen').style.display = 'none';
+            let phrase = emotionalPhrases[Math.floor(Math.random() * emotionalPhrases.length)];
+            document.getElementById('end-phrase').innerText = phrase;
+            document.getElementById('end-rounds').innerText = storage.todayRounds;
+            document.getElementById('end-jumps').innerText = storage.todayJumps;
+            document.getElementById('end-summary-modal').style.display = 'flex';
+        }
+
+        document.getElementById('end-training-btn').onclick = showEndSummary;
+        document.getElementById('final-close-btn').onclick = () => location.reload();
         
         let wakeLock = null;
         async function requestWakeLock() {
