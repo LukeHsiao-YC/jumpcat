@@ -80,7 +80,6 @@
             transform: scaleX(-1) translateY(0); 
         }
 
-        /* 改用原生動畫確保跳躍穩定，不怕被覆蓋 */
         @keyframes catJump {
             0% { transform: scaleX(-1) translateY(0); }
             50% { transform: scaleX(-1) translateY(-40px); }
@@ -160,7 +159,7 @@
         .btn-success { background: #2ed573; }
         .btn-gold { background: #ffa502; }
 
-        #daily-chest-btn, #bonus-chest-3, #bonus-chest-5, #passport-btn {
+        #daily-chest-btn, #bonus-chest-3, #bonus-chest-5, #passport-btn, #upgrade-base-btn {
             background: #ffd700; color: #d35400; font-size: 18px; padding: 12px 24px;
             border-radius: 12px; border: 2px solid #e67e22; font-weight: bold;
             margin: 5px; cursor: pointer;
@@ -195,6 +194,7 @@
             filter: grayscale(100%); opacity: 0.5;
         }
         .stamp.unlocked { filter: grayscale(0%); opacity: 1; border-color: #ff4757; }
+        .stamp.locked { filter: grayscale(100%); opacity: 0.4; }
         .stamp .icon { font-size: 30px; margin-bottom: 5px; }
         .stamp .name { font-size: 12px; font-weight: bold; color: #333; }
     </style>
@@ -205,6 +205,14 @@
         <h1 style="color: #ffd700; font-size: 40px;">開箱成功！</h1>
         <p id="reward-text" style="color: #fff; font-size: 24px;"></p>
         <button id="close-reward-btn" class="btn-success">收下獎勵</button>
+    </div>
+
+    <!-- 貓咪基地(升級)畫面 -->
+    <div id="upgrade-modal" class="overlay" style="display: none; z-index: 160;">
+        <h1 style="color: #e67e22; font-size: 36px; margin-bottom: 0;">貓咪升級基地</h1>
+        <p style="margin-top: 5px; font-weight: bold; color: #555;">目前擁有罐頭：<span id="upgrade-cans-display">0</span> 🥫</p>
+        <div class="passport-grid" id="upgrade-grid" style="grid-template-columns: repeat(5, 1fr);"></div>
+        <button id="close-upgrade-btn" class="btn-secondary">返回首頁</button>
     </div>
 
     <div id="passport-modal" class="overlay" style="display: none; z-index: 150;">
@@ -225,6 +233,7 @@
         <div style="color: #e67e22; font-weight: bold; margin-bottom: 10px;">勇氣罐頭：<span id="cans-display">0</span> 🥫</div>
         
         <div id="chests-area" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 10px;">
+            <button id="upgrade-base-btn" style="background: #e67e22; color: #fff; border-color: #d35400;">⛺ 貓咪基地 (升級)</button>
             <button id="passport-btn" style="background: #3498db; color: #fff; border-color: #2980b9;">🗺️ 查看旅遊護照</button>
             <button id="daily-chest-btn" style="display: none;">🎁 領取今日寶箱</button>
             <button id="bonus-chest-3" style="display: none;">🥉 完成 3 局獎勵</button>
@@ -271,6 +280,7 @@
             <div id="phase-text">備戰中</div>
             <div class="progress-bar"><div id="time-bar"></div></div>
         </div>
+        <div class="stats">擊殺<br><span id="kill-display">0</span></div>
         <div class="stats">次數<br><span id="jump-display">0</span></div>
     </div>
 
@@ -360,7 +370,6 @@
             maxWorld: parseInt(localStorage.getItem('maxWorld') || '0') 
         };
 
-        // 調整為 35 局才換下一個國家 (5局/天 * 7天 = 一週)
         const ROUNDS_PER_WORLD = 35; 
 
         function saveGame() {
@@ -379,6 +388,7 @@
         let currentRound = 1;
         let todayCompleted = 0;
         let coins = 0;
+        let kills = 0;
         let roundJumps = 0;
         let isPlaying = false;
         let playMode = 'NOROPE';
@@ -465,6 +475,7 @@
         document.getElementById('bonus-chest-5').onclick = () => openChest('bonus5');
         document.getElementById('close-reward-btn').onclick = () => document.getElementById('reward-modal').style.display = 'none';
 
+        // 護照顯示
         document.getElementById('passport-btn').onclick = () => {
             const grid = document.getElementById('passport-grid');
             grid.innerHTML = '';
@@ -483,6 +494,67 @@
             document.getElementById('passport-modal').style.display = 'flex';
         };
         document.getElementById('close-passport-btn').onclick = () => document.getElementById('passport-modal').style.display = 'none';
+
+        // 貓咪基地(升級)顯示
+        function renderUpgradeBase() {
+            const grid = document.getElementById('upgrade-grid');
+            grid.innerHTML = '';
+            document.getElementById('upgrade-cans-display').innerText = storage.cans;
+
+            for (let i = 1; i <= 5; i++) {
+                let lv = storage.catLevels[i];
+                let base = CAT_BASE[i];
+                let cost = lv * 20;
+
+                let isLocked = false;
+                if (i === 4 && storage.lifetimeJumps < 500) isLocked = true;
+                if (i === 5 && currentRound < 3) isLocked = true;
+
+                let card = document.createElement('div');
+                card.className = `stamp ${isLocked ? 'locked' : 'unlocked'}`;
+                
+                if (isLocked) {
+                    card.innerHTML = `<div class="icon">❓</div><div class="name">尚未解鎖</div>`;
+                } else {
+                    let hp = Math.floor(base.hp * (1 + (lv-1)*0.2));
+                    let atk = Math.floor(base.atk * (1 + (lv-1)*0.2));
+                    let nextHp = Math.floor(base.hp * (1 + lv*0.2));
+                    let nextAtk = Math.floor(base.atk * (1 + lv*0.2));
+
+                    let btnColor = storage.cans >= cost ? '#2ed573' : '#ccc';
+                    let btnStyle = `font-size:12px; padding:5px 10px; border-radius:15px; border:none; color:white; font-weight:bold; background:${btnColor}; cursor:${storage.cans >= cost ? 'pointer' : 'not-allowed'}`;
+
+                    card.innerHTML = `
+                        <div class="icon">${base.icon}</div>
+                        <div class="name">Lv.${lv}</div>
+                        <div style="font-size:10px; color:#666; margin: 5px 0;">血 ${hp} 🡒 ${nextHp}<br>攻 ${atk} 🡒 ${nextAtk}</div>
+                        <button class="upgrade-btn" data-id="${i}" style="${btnStyle}">升級 (${cost}🥫)</button>
+                    `;
+                }
+                grid.appendChild(card);
+            }
+
+            document.querySelectorAll('.upgrade-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    let id = parseInt(e.target.getAttribute('data-id'));
+                    let cost = storage.catLevels[id] * 20;
+                    if (storage.cans >= cost) {
+                        storage.cans -= cost;
+                        storage.catLevels[id]++;
+                        saveGame();
+                        updateUI();
+                        renderUpgradeBase();
+                    }
+                };
+            });
+        }
+
+        document.getElementById('upgrade-base-btn').onclick = () => {
+            renderUpgradeBase();
+            document.getElementById('upgrade-modal').style.display = 'flex';
+        };
+        document.getElementById('close-upgrade-btn').onclick = () => document.getElementById('upgrade-modal').style.display = 'none';
+
 
         function updateBPM() {
             if (currentPhase !== 'JUMP') return;
@@ -525,7 +597,6 @@
                 this.cd = 0;
                 
                 const bf = document.getElementById('battlefield');
-                // 鎖定座標在容器內，避免因為視窗縮放被擠到外面
                 this.x = isCat ? 0 : bf.clientWidth - 80;
                 this.id = Math.random().toString(36).substr(2,9);
                 this.el = this.createDOM(typeData.icon || '❓');
@@ -546,7 +617,12 @@
                 if(this.hp <= 0) {
                     this.el.classList.add('dead');
                     setTimeout(() => this.el.remove(), 300);
-                    if(!this.isCat) coins += 5;
+                    if(!this.isCat) {
+                        coins += 5;
+                        kills++;
+                        let killEl = document.getElementById('kill-display');
+                        if(killEl) killEl.innerText = kills;
+                    }
                 }
             }
             update(enemies) {
@@ -571,6 +647,8 @@
             document.getElementById('result-screen').style.display = 'none';
             isPlaying = true;
             coins = 30; 
+            kills = 0;
+            document.getElementById('kill-display').innerText = 0;
             
             checkWorldProgress();
             
@@ -607,13 +685,21 @@
             
             units.forEach(u => u.el.remove()); units = [];
             document.querySelectorAll('.bg-prop').forEach(el => el.remove());
+
+            if (isMetronomeOn) {
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                if (metronomeInterval) clearInterval(metronomeInterval);
+                metronomeInterval = setInterval(playBeatSound, 60000 / 70); 
+            }
         }
 
         function startBattlePhase() {
             currentPhase = 'BATTLE';
             timeRemaining = 60;
-            frameCount = 0; // 重置計數器確保怪獸可以立刻出現
+            frameCount = 0; 
             
+            if (metronomeInterval) clearInterval(metronomeInterval);
+
             let m = Math.floor(timeRemaining / 60);
             let s = timeRemaining % 60;
             document.getElementById('phase-text').innerText = `怪獸襲擊！ ${m}:${s.toString().padStart(2, '0')}`;
@@ -622,7 +708,6 @@
             document.getElementById('scout-cat').style.display = 'none';
             document.getElementById('pace-indicator').style.display = 'none';
             
-            // 保證戰鬥開始時，清除畫面上所有的跳躍背景裝飾物
             document.querySelectorAll('.bg-prop').forEach(el => el.remove());
         }
 
@@ -651,7 +736,6 @@
                 monsters.forEach(m => m.update(cats));
                 units = units.filter(u => u.hp > 0 || u.el.parentNode);
                 
-                // 減少怪獸密度：除以 0.8，讓間隔時間拉長
                 let spawnInterval = Math.floor(Math.max(25, 75 - (currentRound * 10)) / 0.8); 
                 if(frameCount % spawnInterval === 0) spawnMonster();
             }
@@ -697,6 +781,8 @@
             storage.cans += earnedCans;
             saveGame();
             
+            if (metronomeInterval) clearInterval(metronomeInterval);
+
             document.getElementById('result-jumps').innerText = roundJumps;
             document.getElementById('result-coins').innerText = coins;
             document.getElementById('result-cans').innerText = earnedCans;
@@ -723,7 +809,7 @@
                 let cat = document.getElementById('scout-cat');
                 if (cat) {
                     cat.style.animation = 'none';
-                    void cat.offsetWidth; // 強制重繪重置動畫
+                    void cat.offsetWidth; 
                     cat.style.animation = 'catJump 0.3s ease-out';
                 }
 
@@ -800,13 +886,12 @@
             }
         });
 
-        // 修正模擬換日的按鈕，加入清除寶箱紀錄的邏輯
         document.getElementById('cheat-day-btn').addEventListener('click', () => {
             storage.consecutiveDays++;
-            storage.lastDraw = '';       // 清除今日寶箱領取紀錄
-            storage.lastBonus3 = '';     // 清除3局寶箱領取紀錄
-            storage.lastBonus5 = '';     // 清除5局寶箱領取紀錄
-            todayCompleted = 0;          // 重置今日局數
+            storage.lastDraw = '';       
+            storage.lastBonus3 = '';     
+            storage.lastBonus5 = '';     
+            todayCompleted = 0;          
             saveGame();
             updateUI();
             showSysMsg(`模擬換日！目前：${storage.consecutiveDays} 天`);
