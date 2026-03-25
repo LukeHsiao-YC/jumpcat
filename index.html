@@ -839,6 +839,7 @@
             document.getElementById('mode-selection').style.display = 'flex';
         };
         document.getElementById('kb-start-btn').onclick = startGame;
+        document.getElementById('start-btn').onclick = startGame;
         document.getElementById('next-round-btn').onclick = () => { currentRound++; startGame(); };
         document.getElementById('end-training-btn').onclick = () => location.reload();
         
