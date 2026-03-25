@@ -241,7 +241,7 @@
         </div>
 
         <div id="mode-selection" class="btn-group">
-            <button id="mode-rope-btn" class="btn-gold">有繩挑戰 (獎勵 x2)</button>
+            <button id="mode-rope-btn" class="btn-gold">有繩挑戰 (獎勵加成)</button>
             <button id="mode-norope-btn" class="btn-secondary">無繩休閒</button>
         </div>
 
@@ -395,6 +395,7 @@
         let requiredJoycons = 1;
         let connectedDevicesCount = 0;
         let jumpTimestamps = [];
+        let currentBPM = 0;
         let audioCtx, metronomeInterval, isMetronomeOn = false;
         let lastJumpTime = 0;
         let lionUsed = false;
@@ -459,7 +460,11 @@
         function openChest(type) {
             let gold = 0, cans = 0;
             const today = new Date().toLocaleDateString();
-            if (type === 'daily') { gold = 100; cans = 10; storage.lastDraw = today; }
+            if (type === 'daily') { 
+                gold = Math.floor(Math.random() * 151) + 50; // 50~200 隨機
+                cans = Math.floor(Math.random() * 6) + 5;   // 5~10 隨機
+                storage.lastDraw = today; 
+            }
             else if (type === 'bonus3') { gold = 300; cans = 50; storage.lastBonus3 = today; }
             else if (type === 'bonus5') { gold = 600; cans = 100; storage.lastBonus5 = today; }
             
@@ -555,17 +560,25 @@
         };
         document.getElementById('close-upgrade-btn').onclick = () => document.getElementById('upgrade-modal').style.display = 'none';
 
-
+        // 優化的配速計算，計算最後幾次跳躍的平均間隔，更真實靈敏
         function updateBPM() {
             if (currentPhase !== 'JUMP') return;
-            const now = Date.now();
-            jumpTimestamps = jumpTimestamps.filter(t => now - t < 10000);
-
-            let currentBPM = 0;
             const paceEl = document.getElementById('pace-indicator');
             if (!paceEl) return;
 
-            if (jumpTimestamps.length > 2) currentBPM = jumpTimestamps.length * 6; 
+            const now = Date.now();
+            
+            // 如果超過 2.5 秒沒有跳躍，視為停頓，歸零計算
+            if (now - lastJumpTime > 2500) {
+                jumpTimestamps = [];
+                currentBPM = 0;
+            } else if (jumpTimestamps.length >= 2) {
+                let duration = jumpTimestamps[jumpTimestamps.length - 1] - jumpTimestamps[0];
+                let intervals = jumpTimestamps.length - 1;
+                if (duration > 0) {
+                    currentBPM = Math.round(60000 / (duration / intervals));
+                }
+            }
 
             if (currentBPM === 0) {
                 paceEl.innerText = '準備起跳！保持 60~80 下/分的節奏';
@@ -642,6 +655,36 @@
             }
         }
 
+        // 統一控管買貓動作，加入防連點機制
+        let lastBuyTime = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+        function buyCat(id) {
+            if(!isPlaying || currentPhase !== 'BATTLE') return;
+            
+            const now = Date.now();
+            if (now - lastBuyTime[id] < 300) return; // 0.3秒內不允許重複買同一種貓，防Joycon抽筋
+            lastBuyTime[id] = now;
+
+            if(id === 6) {
+                if(todayCompleted >= 5 && coins >= 400 && !lionUsed) {
+                    lionUsed = true; 
+                    coins -= 400;
+                    units.filter(u => !u.isCat).forEach(m => m.takeDamage(9999));
+                    showSysMsg("獅子王絕招！");
+                    document.getElementById('coin-display').innerText = coins;
+                }
+            } else {
+                let base = CAT_BASE[id];
+                if(coins >= base.price) {
+                    if (id === 4 && storage.lifetimeJumps < 500) return;
+                    if (id === 5 && currentRound < 3) return;
+                    
+                    coins -= base.price;
+                    units.push(new Unit(true, id, base));
+                    document.getElementById('coin-display').innerText = coins;
+                }
+            }
+        }
+
         function startGame() {
             document.getElementById('setup-screen').style.display = 'none';
             document.getElementById('result-screen').style.display = 'none';
@@ -671,6 +714,7 @@
             roundJumps = 0;
             lionUsed = false;
             jumpTimestamps = [];
+            currentBPM = 0;
             
             let m = Math.floor(timeRemaining / 60);
             let s = timeRemaining % 60;
@@ -793,15 +837,20 @@
         function triggerJump() {
             try {
                 if(!isPlaying || currentPhase !== 'JUMP') return;
-                if(Date.now() - lastJumpTime < 400) return;
-                lastJumpTime = Date.now();
-                jumpTimestamps.push(lastJumpTime);
+                const now = Date.now();
+                if(now - lastJumpTime < 400) return;
+                lastJumpTime = now;
+                
+                jumpTimestamps.push(now);
+                if (jumpTimestamps.length > 5) jumpTimestamps.shift(); // 只保留最近5次來算配速
+                
                 updateBPM();
                 
                 roundJumps++;
-                let currentBPM = jumpTimestamps.length * 6;
-                let paceBonus = (currentBPM >= 60 && currentBPM <= 85) ? 2 : 1;
-                coins += (playMode === 'ROPE' ? 2 : 1) * paceBonus;
+                // 節奏金幣加成
+                let inZone = (currentBPM >= 60 && currentBPM <= 85);
+                let baseCoin = inZone ? 4 : 2;
+                coins += (playMode === 'ROPE' ? baseCoin * 2 : baseCoin);
                 
                 document.getElementById('jump-display').innerText = roundJumps;
                 document.getElementById('coin-display').innerText = coins;
@@ -869,18 +918,10 @@
         window.addEventListener('keydown', e => {
             if(e.code === 'Space') triggerJump();
             if(e.key >= '1' && e.key <= '5') {
-                let id = parseInt(e.key);
-                if(coins >= CAT_BASE[id].price) {
-                    coins -= CAT_BASE[id].price;
-                    units.push(new Unit(true, id, CAT_BASE[id]));
-                    document.getElementById('coin-display').innerText = coins;
-                }
+                buyCat(parseInt(e.key));
             }
-            if(e.key === '6' && todayCompleted >= 5 && coins >= 400 && !lionUsed) {
-                lionUsed = true; coins -= 400;
-                units.filter(u => !u.isCat).forEach(m => m.takeDamage(9999));
-                showSysMsg("獅子王絕招！");
-            }
+            if(e.key === '6') buyCat(6);
+            
             if(e.code === 'KeyT' && isPlaying) {
                 timeRemaining = Math.max(1, timeRemaining - 10);
             }
@@ -908,7 +949,7 @@
             requiredJoycons = 2;
             document.getElementById('mode-selection').style.display = 'none';
             document.getElementById('connect-section').style.display = 'flex'; 
-            document.getElementById('connection-status').innerText = "有繩模式：請連線第一支手把";
+            document.getElementById('connection-status').innerText = "有繩挑戰：請連線第一支手把";
             document.getElementById('connection-status').style.color = '#ff4757';
         };
         document.getElementById('mode-norope-btn').onclick = () => { 
@@ -1033,17 +1074,7 @@
                             else if ((rightButtons & 0x40) !== 0 || (rightButtons & 0x80) !== 0) buyId = 5; 
                             else if ((leftButtons & 0x40) !== 0 || (leftButtons & 0x80) !== 0) buyId = 6; 
 
-                            if (buyId > 0 && coins >= CAT_BASE[buyId].price) {
-                                if (buyId === 6 && (!lionUsed && todayCompleted >= 5)) {
-                                    lionUsed = true; coins -= 400;
-                                    units.filter(u => !u.isCat).forEach(m => m.takeDamage(9999));
-                                    showSysMsg("獅子王絕招！");
-                                } else if (buyId !== 6) {
-                                    coins -= CAT_BASE[buyId].price;
-                                    units.push(new Unit(true, buyId, CAT_BASE[buyId]));
-                                    document.getElementById('coin-display').innerText = coins;
-                                }
-                            }
+                            if (buyId > 0) buyCat(buyId);
                         }
                     }
                 });
