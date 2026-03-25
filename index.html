@@ -382,6 +382,8 @@
         let roundJumps = 0;
         let isPlaying = false;
         let playMode = 'NOROPE';
+        let requiredJoycons = 1;
+        let connectedDevicesCount = 0;
         let jumpTimestamps = [];
         let audioCtx, metronomeInterval, isMetronomeOn = false;
         let lastJumpTime = 0;
@@ -816,8 +818,26 @@
             showSysMsg(`推進至局數 ${currentRound}，解鎖新進度`);
         });
 
-        document.getElementById('mode-rope-btn').onclick = () => { playMode = 'ROPE'; document.getElementById('connect-section').style.display = 'flex'; };
-        document.getElementById('mode-norope-btn').onclick = () => { playMode = 'NOROPE'; document.getElementById('connect-section').style.display = 'flex'; };
+        document.getElementById('mode-rope-btn').onclick = () => { 
+            playMode = 'ROPE'; 
+            requiredJoycons = 2;
+            document.getElementById('mode-selection').style.display = 'none';
+            document.getElementById('connect-section').style.display = 'flex'; 
+            document.getElementById('connection-status').innerText = "有繩模式：請連線第一支手把";
+            document.getElementById('connection-status').style.color = '#ff4757';
+        };
+        document.getElementById('mode-norope-btn').onclick = () => { 
+            playMode = 'NOROPE'; 
+            requiredJoycons = 1;
+            document.getElementById('mode-selection').style.display = 'none';
+            document.getElementById('connect-section').style.display = 'flex'; 
+            document.getElementById('connection-status').innerText = "無繩休閒：請連線 1 支手把";
+            document.getElementById('connection-status').style.color = '#ff4757';
+        };
+        document.getElementById('back-mode-btn').onclick = () => {
+            document.getElementById('connect-section').style.display = 'none';
+            document.getElementById('mode-selection').style.display = 'flex';
+        };
         document.getElementById('kb-start-btn').onclick = startGame;
         document.getElementById('next-round-btn').onclick = () => { currentRound++; startGame(); };
         document.getElementById('end-training-btn').onclick = () => location.reload();
@@ -882,7 +902,9 @@
                 const devices = await navigator.hid.requestDevice({ filters: [] });
                 if (devices.length === 0) return;
                 const joycon = devices[0];
-                await joycon.open();
+                if (!joycon.opened) {
+                    await joycon.open();
+                }
                 connectedDevicesCount++;
                 
                 statusText.innerText = `設定第 ${connectedDevicesCount} 支感測器中...`;
@@ -941,6 +963,7 @@
                 });
 
             } catch (error) {
+                console.error("Joy-Con 連線錯誤:", error);
                 statusText.innerText = "連線失敗，請檢查系統藍牙設定。";
             }
         });
