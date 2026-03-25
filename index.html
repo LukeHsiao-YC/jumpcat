@@ -239,15 +239,26 @@
 
     <div id="passport-modal" class="overlay" style="display: none; z-index: 150;">
         <h1 style="color: #3742fa; font-size: 36px; margin-bottom: 0;">環遊世界護照</h1>
-        <p style="margin-top: 5px; font-weight: bold; color: #555;">收集進度：<span id="unlocked-count">1</span> / 24</p>
+        <p style="margin-top: 5px; font-weight: bold; color: #ff4757; font-size: 18px;">全球總累積：<span id="passport-total-rounds">0</span> 局 / <span id="passport-total-jumps">0</span> 下</p>
+        <p style="margin-top: 0px; font-weight: bold; color: #555;">收集進度：<span id="unlocked-count">1</span> / 24</p>
         <div class="passport-grid" id="passport-grid"></div>
         <button id="close-passport-btn" class="btn-secondary">關閉護照</button>
     </div>
 
     <div id="setup-screen" class="overlay">
-        <div style="position: absolute; top: 15px; left: 15px; display: flex; gap: 5px;">
-            <button id="cheat-day-btn" style="font-size: 12px; padding: 8px; background: #555;">模擬換日</button>
-            <button id="cheat-world-btn" style="font-size: 12px; padding: 8px; background: #e1b12c;">飛往下個國家(測試)</button>
+        <!-- 密碼解鎖開發者按鈕 -->
+        <button id="unlock-dev-btn" style="position: absolute; top: 15px; left: 15px; font-size: 16px; padding: 5px 8px; background: transparent; border: none; cursor: pointer; z-index: 90;" title="開發者設定">⚙️</button>
+        
+        <!-- 被鎖定的開發者面板 -->
+        <div id="dev-panel" style="display: none; position: absolute; top: 15px; left: 15px; gap: 5px; flex-direction: column; z-index: 100;">
+            <div style="display: flex; gap: 5px;">
+                <button id="cheat-day-btn" style="font-size: 12px; padding: 8px; background: #555;">模擬換日</button>
+                <button id="cheat-world-btn" style="font-size: 12px; padding: 8px; background: #e1b12c;">飛往下個國家</button>
+            </div>
+            <div style="display: flex; gap: 5px;">
+                <button id="kb-start-btn" style="font-size: 12px; padding: 8px; background: #3742fa;">鍵盤開始</button>
+                <button id="reset-all-btn" style="font-size: 12px; padding: 8px; background: #ff4757;">全部重置</button>
+            </div>
         </div>
         
         <h1>貓咪跳繩大戰爭</h1>
@@ -276,7 +287,6 @@
             <p id="connection-status" style="color: #ff4757; font-weight: bold;">請連線 Joy-Con</p>
             <div class="btn-group">
                 <button id="connect-btn">連線</button>
-                <button id="kb-start-btn" class="btn-secondary">鍵盤開始</button>
                 <button id="start-btn" class="btn-success" style="display:none;">開始挑戰</button>
             </div>
             <button id="metronome-toggle-btn" style="background: #34495e; color: white; margin-top: 10px; font-size: 12px;">節拍器：關閉</button>
@@ -547,11 +557,18 @@
             const grid = document.getElementById('passport-grid');
             grid.innerHTML = '';
             let unlockedCount = 0;
+            let totalRounds = 0;
+            let totalJumps = 0;
+            
             for (let i = 0; i < WORLDS.length; i++) {
                 let isUnlocked = i <= storage.maxWorld;
                 if (isUnlocked) unlockedCount++;
                 let w = WORLDS[i];
                 let stats = storage.worldStats[i] || { rounds: 0, jumps: 0 };
+                
+                totalRounds += stats.rounds;
+                totalJumps += stats.jumps;
+                
                 let stamp = document.createElement('div');
                 stamp.className = `stamp ${isUnlocked ? 'unlocked' : ''}`;
                 
@@ -563,6 +580,8 @@
                 grid.appendChild(stamp);
             }
             document.getElementById('unlocked-count').innerText = unlockedCount;
+            document.getElementById('passport-total-rounds').innerText = totalRounds;
+            document.getElementById('passport-total-jumps').innerText = totalJumps;
             document.getElementById('passport-modal').style.display = 'flex';
         };
         document.getElementById('close-passport-btn').onclick = () => document.getElementById('passport-modal').style.display = 'none';
@@ -699,6 +718,8 @@
                         kills++;
                         let killEl = document.getElementById('kill-display');
                         if(killEl) killEl.innerText = kills;
+                        let coinEl = document.getElementById('coin-display');
+                        if(coinEl) coinEl.innerText = coins;
                     }
                 }
             }
@@ -997,6 +1018,25 @@
             
             if(e.code === 'KeyT' && isPlaying) {
                 timeRemaining = Math.max(1, timeRemaining - 10);
+            }
+        });
+
+        // 密碼解鎖開發者面板
+        document.getElementById('unlock-dev-btn').addEventListener('click', () => {
+            let pwd = prompt("請輸入測試密碼：");
+            if (pwd === "1234") {
+                document.getElementById('dev-panel').style.display = 'flex';
+                document.getElementById('unlock-dev-btn').style.display = 'none';
+            } else if (pwd !== null) {
+                alert("密碼錯誤！");
+            }
+        });
+
+        // 全部重置按鈕
+        document.getElementById('reset-all-btn').addEventListener('click', () => {
+            if (confirm("確定要清除所有遊戲進度嗎？這個動作無法復原喔！")) {
+                localStorage.clear();
+                location.reload();
             }
         });
 
