@@ -727,7 +727,7 @@
                     this.el.classList.add('dead');
                     setTimeout(() => this.el.remove(), 300);
                     if(!this.isCat) {
-                        coins += 10; // 擊殺獎勵翻倍成 10 🪙
+                        coins += 10; 
                         kills++;
                         let killEl = document.getElementById('kill-display');
                         if(killEl) killEl.innerText = kills;
@@ -740,15 +740,14 @@
                 if(this.hp <= 0) return;
                 let nearest = null, minDist = Infinity;
                 enemies.forEach(e => {
-                    let d = this.isCat ? (e.x - this.x) : (this.x - e.x);
-                    if(d > 0 && d < minDist) { minDist = d; nearest = e; }
+                    let d = Math.abs(e.x - this.x);
+                    if(d < minDist) { minDist = d; nearest = e; }
                 });
                 if(nearest && minDist <= this.range) {
                     if(this.cd <= 0) { nearest.takeDamage(this.atk); this.cd = this.cdMax; }
                 } else {
                     const bfWidth = document.getElementById('battlefield').clientWidth;
                     if (this.isCat) {
-                        // 設定空氣牆：貓咪最多只會走到畫面邊緣停下來
                         this.x = Math.min(this.x + this.speed, bfWidth - 60);
                     } else {
                         this.x -= this.speed;
@@ -795,7 +794,6 @@
             kills = 0;
             document.getElementById('kill-display').innerText = 0;
             
-            // 確保剛領的寶箱錢不會被洗掉，沒有錢的話發 30 啟動資金
             if (coins < 30) {
                 coins = 30; 
             }
@@ -963,12 +961,10 @@
             try {
                 if(!isPlaying || currentPhase !== 'JUMP') return;
                 const now = Date.now();
-                // 微調防連點為 300 毫秒，容許稍微快一點的動作
                 if(now - lastJumpTime < 300) return;
                 lastJumpTime = now;
                 
                 jumpTimestamps.push(now);
-                // 留存更多次的紀錄來平均配速，數值會更穩定
                 if (jumpTimestamps.length > 8) jumpTimestamps.shift(); 
                 
                 updateBPM();
@@ -981,10 +977,9 @@
                 document.getElementById('jump-display').innerText = roundJumps;
                 document.getElementById('coin-display').innerText = coins;
 
-                // 跳滿 50 下的倍數掉落寶箱，並加入獨立特效
                 if (roundJumps > 0 && roundJumps % 50 === 0) {
                     let multiplier = Math.floor(roundJumps / 50);
-                    let bonusCoins = (Math.floor(Math.random() * 30) + 20) * multiplier; // 獎勵逐步增加
+                    let bonusCoins = (Math.floor(Math.random() * 30) + 20) * multiplier; 
                     let bonusCans = 2 * multiplier;
                     coins += bonusCoins;
                     storage.cans += bonusCans;
