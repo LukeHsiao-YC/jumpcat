@@ -176,6 +176,15 @@
             opacity: 0; transition: opacity 0.3s; pointer-events: none;
         }
 
+        /* 修正怪物來襲動畫樣式 */
+        #phase-transition {
+            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(255, 71, 87, 0.95); color: white; padding: 20px 50px;
+            border-radius: 30px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); z-index: 200;
+            display: none; animation: popIn 0.3s ease-out; pointer-events: none;
+        }
+        @keyframes popIn { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+
         .passport-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -329,8 +338,8 @@
     </div>
     
     <div id="sys-msg"></div>
-    <div id="phase-transition">
-        <h2 id="transition-title">怪物來襲！</h2>
+    <div id="phase-transition" style="display: none;">
+        <h2 id="transition-title" style="margin: 0;">怪物來襲！</h2>
     </div>
 
     <div class="shop" id="shop">
@@ -358,12 +367,12 @@
         <div class="cat-card locked" id="card-5" onclick="buyCat(5)">
             <div class="icon">🤖</div><div class="level-tag" id="lv-5">Lv.1</div>
             <div class="price">300 🪙</div><div class="hint" id="stats-5"></div>
-            <div class="hint">鍵5<br>手把 R/ZR</div>
+            <div class="hint">鍵5<br>手把 R</div>
         </div>
         <div class="cat-card locked" id="card-6" onclick="buyCat(6)">
             <div class="icon">🦁</div><div class="level-tag">絕招</div>
             <div class="price">400 🪙</div><div class="hint">全場秒殺</div>
-            <div class="hint">鍵6<br>手把 L/ZL</div>
+            <div class="hint">鍵6<br>手把 ZR</div>
         </div>
     </div>
 
@@ -838,6 +847,13 @@
             document.getElementById('pace-indicator').style.display = 'none';
             
             document.querySelectorAll('.bg-prop').forEach(el => el.remove());
+
+            // 觸發怪物來襲提示動畫
+            let pt = document.getElementById('phase-transition');
+            if(pt) {
+                pt.style.display = 'block';
+                setTimeout(() => pt.style.display = 'none', 1500);
+            }
         }
 
         function spawnMonster() {
@@ -948,6 +964,15 @@
                 
                 document.getElementById('jump-display').innerText = roundJumps;
                 document.getElementById('coin-display').innerText = coins;
+
+                // 跳躍達到 50 的倍數時觸發寶箱獎勵
+                if (roundJumps > 0 && roundJumps % 50 === 0) {
+                    let bonusCoins = Math.floor(Math.random() * 30) + 20;
+                    coins += bonusCoins;
+                    storage.cans += 2;
+                    document.getElementById('coin-display').innerText = coins;
+                    showSysMsg(`🎉 突破 ${roundJumps} 下！掉落寶箱：金幣+${bonusCoins}、罐頭+2`);
+                }
                 
                 let cat = document.getElementById('scout-cat');
                 if (cat) {
@@ -1206,8 +1231,8 @@
                             else if ((rightButtons & 0x04) !== 0 || (leftButtons & 0x01) !== 0) buyId = 2; 
                             else if ((rightButtons & 0x02) !== 0 || (leftButtons & 0x02) !== 0) buyId = 3; 
                             else if ((rightButtons & 0x01) !== 0 || (leftButtons & 0x08) !== 0) buyId = 4; 
-                            else if ((rightButtons & 0x40) !== 0 || (rightButtons & 0x80) !== 0) buyId = 5; 
-                            else if ((leftButtons & 0x40) !== 0 || (leftButtons & 0x80) !== 0) buyId = 6; 
+                            else if ((rightButtons & 0x40) !== 0 || (leftButtons & 0x40) !== 0) buyId = 5; 
+                            else if ((rightButtons & 0x80) !== 0 || (leftButtons & 0x80) !== 0) buyId = 6; 
 
                             if (buyId > 0) buyCat(buyId);
                         }
